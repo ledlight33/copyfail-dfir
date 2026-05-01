@@ -35,6 +35,7 @@ Single-page HTML with React (via CDN). No build step, no dependencies — just o
 **Marino Bekios** — MB Labs
 
 [linkedin.com/in/marbekios](https://linkedin.com/in/marbekios)
+
 [Visit my Website](https://marinobekios.com/)
 
 ## License

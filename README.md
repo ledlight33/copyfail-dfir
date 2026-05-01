@@ -4,6 +4,8 @@ An interactive, step-by-step forensic investigation walkthrough for the **Copy F
 
 Click through a realistic incident response scenario — from SIEM alert to confirmed verdict — using **real tools and verified commands**.
 
+![image](https://github.com/ledlight33/copyfail-dfir/blob/main/screenshots/dfir.png)
+
 ## What You'll See
 
 - Authentication logs with no escalation trail

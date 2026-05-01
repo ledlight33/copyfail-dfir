@@ -15,7 +15,6 @@ Click through a realistic incident response scenario — from SIEM alert to conf
 
 ## Why This Exists
 
-Everyone posts about vulnerabilities. Nobody posts about how to investigate them.
 
 Copy Fail (CVE-2026-31431) is a page-cache-only attack — disk forensics alone will miss it entirely. This walkthrough shows what a DFIR analyst would actually look for.
 
@@ -36,7 +35,8 @@ Single-page HTML with React (via CDN). No build step, no dependencies — just o
 **Marino Bekios** — MB Labs
 
 [linkedin.com/in/marbekios](https://linkedin.com/in/marbekios)
+[Visit my Website](https://marinobekios.com/)
 
 ## License
 
-CC BY-NC 4.0
+MIT - © 2026 Marino Bekios, MB Labs

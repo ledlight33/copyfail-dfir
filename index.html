@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CVE-2026-31431 Copy Fail — DFIR Investigation Walkthrough</title>
+    
+    <!-- OG Meta Tags for LinkedIn -->
+    <meta property="og:title" content="CVE-2026-31431 Copy Fail — DFIR Investigation Walkthrough">
+    <meta property="og:description" content="Interactive step-by-step forensic investigation of the Copy Fail Linux kernel vulnerability. Every command is real. Every plugin is verified.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://ledlight33.github.io/copyfail-dfir/">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="CVE-2026-31431 Copy Fail — DFIR Investigation">
+    <meta name="twitter:description" content="Interactive DFIR walkthrough. From SIEM alert to confirmed verdict.">
+
+    <meta name="author" content="Marino Bekios — MB Labs">
+    <meta name="description" content="Interactive DFIR investigation walkthrough for CVE-2026-31431 (Copy Fail). Step through a realistic forensic investigation using real Volatility 3 plugins and verified commands.">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0e1a; }
+        #root { min-height: 100vh; }
+    </style>
+
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+const PERIODIC_TABLE_URL = "https://ledlight33.github.io/periodic-table-of-dfir/";
+const MB_LABS_LOGO = "data:image/png;base64,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";
+
+const ElementTile = ({ number, symbol, name, onClick }) => (
+  <div
+    onClick={onClick}
+    style={{
+      width: "64px", height: "68px",
+      background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+      borderRadius: "6px", display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center", cursor: "pointer",
+      position: "relative",
+      boxShadow: "0 0 12px rgba(59, 130, 246, 0.3), inset 0 1px 0 rgba(255,255,255,0.15)",
+      transition: "all 0.2s ease", border: "1px solid rgba(255,255,255,0.1)",
+    }}
+    onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.08)"; }}
+    onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+  >
+    <span style={{ fontSize: "9px", color: "rgba(255,255,255,0.7)", fontWeight: "600", position: "absolute", top: "4px", left: "6px" }}>{number}</span>
+    <span style={{ fontSize: "22px", fontWeight: "800", color: "#fff", letterSpacing: "1px", lineHeight: 1 }}>{symbol}</span>
+    <span style={{ fontSize: "7.5px", color: "rgba(255,255,255,0.85)", fontWeight: "600", marginTop: "2px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{name}</span>
+  </div>
+);
+
+const ToolReference = ({ visible }) => {
+  if (!visible) return null;
+  return (
+    <div style={{ marginTop: "12px", padding: "12px 14px", background: "rgba(59, 130, 246, 0.06)", border: "1px solid rgba(59, 130, 246, 0.2)", borderRadius: "8px", animation: "fadeSlideIn 0.5s ease" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+        <span style={{ fontSize: "10px", fontWeight: "700", letterSpacing: "2px", color: "#3b82f6", fontFamily: "'JetBrains Mono', monospace" }}>
+          🧪 PERIODIC TABLE OF DFIR — DISK & MEMORY FORENSICS
+        </span>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+        <ElementTile number="23" symbol="Vo" name="Volatility" onClick={() => window.open(PERIODIC_TABLE_URL, "_blank")} />
+        <div style={{ flex: 1, minWidth: "140px" }}>
+          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "#94a3b8", lineHeight: "1.6" }}>
+            <span style={{ color: "#3b82f6", fontWeight: "700" }}>Vo</span> — Memory forensics framework used in this investigation
+          </div>
+          <a href={PERIODIC_TABLE_URL} target="_blank" rel="noopener noreferrer"
+            style={{ display: "inline-flex", alignItems: "center", gap: "4px", marginTop: "8px", fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#3b82f6", textDecoration: "none", padding: "4px 10px", border: "1px solid rgba(59, 130, 246, 0.3)", borderRadius: "4px", transition: "all 0.2s" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(59, 130, 246, 0.1)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+          >Explore all 118 tools →</a>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const STEPS = [
+  {
+    phase: "ALERT",
+    title: "Incident Triggered",
+    icon: "⚠",
+    description: "SIEM alert: unauthorized root shell spawned on production host srv-prod-07. No corresponding authentication event. Ticket assigned to you.",
+    action: "Begin Investigation →",
+    terminal: [
+      { type: "system", text: "[SIEM] ALERT — CRITICAL — srv-prod-07" },
+      { type: "system", text: "Unauthorized UID 0 process detected" },
+      { type: "system", text: "PID 48291 → /bin/bash (root)" },
+      { type: "system", text: "Parent PID 48287 → python3 (uid=1001)" },
+      { type: "warn", text: "No sudo/su authentication event found" },
+    ],
+    finding: null,
+    showPeriodicTable: false,
+  },
+  {
+    phase: "STEP 1",
+    title: "Authentication Logs",
+    icon: "📋",
+    description: "First instinct: check auth.log, utmp/wtmp, PAM events. Someone got root — there should be a trail.",
+    action: "Check Logs →",
+    terminal: [
+      { type: "cmd", text: "$ grep -i 'session opened\\|authentication' /var/log/auth.log | tail -20" },
+      { type: "output", text: "Apr 30 03:41:12 sshd[41022]: Accepted publickey for deploy" },
+      { type: "output", text: "Apr 30 03:41:12 systemd-logind: New session 847" },
+      { type: "cmd", text: "$ last -f /var/log/wtmp | head" },
+      { type: "output", text: "deploy   pts/2   10.0.3.44   Apr 30 03:41   still logged in" },
+      { type: "cmd", text: "$ grep sudo /var/log/auth.log | grep 'Apr 30'" },
+      { type: "output", text: "(no results)" },
+    ],
+    finding: {
+      status: "anomaly",
+      text: "🔴 No sudo, su, or PAM event corresponds to the root shell. User 'deploy' (uid=1001) escalated without any authentication mechanism logging it.",
+    },
+    showPeriodicTable: false,
+  },
+  {
+    phase: "STEP 2",
+    title: "File Integrity Check",
+    icon: "🔒",
+    description: "Maybe a setuid binary was tampered with. Check AIDE database, package checksums, Tripwire.",
+    action: "Run Integrity Scan →",
+    terminal: [
+      { type: "cmd", text: "$ aide --check --config=/etc/aide/aide.conf 2>&1 | grep -i changed" },
+      { type: "output", text: "AIDE found NO differences between database and filesystem." },
+      { type: "cmd", text: "$ rpm -V coreutils util-linux sudo 2>/dev/null" },
+      { type: "output", text: "(no output — all verified)" },
+      { type: "cmd", text: "$ sha256sum /usr/bin/su" },
+      { type: "output", text: "a3f2c8...d91e  /usr/bin/su   ✓ matches package" },
+    ],
+    finding: {
+      status: "anomaly",
+      text: "🟡 All binaries verify clean on disk. But someone clearly has root. When integrity tools say 'everything's fine' but evidence says otherwise — that contradiction IS the indicator.",
+    },
+    showPeriodicTable: false,
+  },
+  {
+    phase: "STEP 3",
+    title: "Memory Acquisition & Process Triage",
+    icon: "🧠",
+    description: "Disk is clean. Time to look where disk forensics can't — acquire volatile memory before evidence is lost.",
+    action: "Capture & Triage →",
+    terminal: [
+      { type: "cmd", text: "$ insmod /evidence/lime.ko \"path=/evidence/srv-prod-07.lime format=lime\"" },
+      { type: "system", text: "Memory capture complete — 32 GB acquired" },
+      { type: "cmd", text: "$ vol3 -f /evidence/srv-prod-07.lime linux.pstree.PsTree" },
+      { type: "output", text: "* 41022  1    sshd" },
+      { type: "output", text: "** 48102  41022  bash           uid=1001" },
+      { type: "warn", text: "*** 48287  48102  python3        uid=1001" },
+      { type: "warn", text: "**** 48291  48287  bash           uid=0" },
+      { type: "cmd", text: "$ vol3 -f /evidence/srv-prod-07.lime linux.psaux.PsAux --pid 48287" },
+      { type: "warn", text: "48287  48102  python3  python3 /tmp/.x.py" },
+    ],
+    finding: {
+      status: "critical",
+      text: "🔴 PID 48287 ran python3 /tmp/.x.py → spawned PID 48291 (bash as uid=0). Privilege escalation from uid=1001 to root in one process hop, with no authentication event. Hidden script executed from /tmp — file may already be deleted.",
+    },
+    showPeriodicTable: false,
+  },
+  {
+    phase: "STEP 4",
+    title: "Page Cache Forensics",
+    icon: "🔬",
+    description: "Disk integrity passed, but the attack lives in memory. Use Volatility's pagecache plugins to compare cached binaries against on-disk originals.",
+    action: "Analyze Page Cache →",
+    terminal: [
+      { type: "cmd", text: "$ vol3 -f /evidence/srv-prod-07.lime linux.pagecache.Files | grep '/usr/bin/su'" },
+      { type: "output", text: "0xffff9a..  /  sda1  524389  REG  InodePages:4  CachedPages:4  /usr/bin/su" },
+      { type: "cmd", text: "$ vol3 -f /evidence/srv-prod-07.lime linux.pagecache.InodePages --find /usr/bin/su --dump" },
+      { type: "system", text: "Dumped 4 cached pages → InodePages.0xffff9a.524389.su.dat" },
+      { type: "cmd", text: "$ sha256sum InodePages.*.su.dat" },
+      { type: "warn", text: "e7b319...4f02  InodePages.0xffff9a.524389.su.dat" },
+      { type: "cmd", text: "$ sha256sum /usr/bin/su" },
+      { type: "output", text: "a3f2c8...d91e  /usr/bin/su" },
+      { type: "warn", text: "[!] HASH MISMATCH — cached ≠ on-disk" },
+    ],
+    finding: {
+      status: "critical",
+      text: "🔴 CRITICAL — The page-cached version of /usr/bin/su in RAM does not match the on-disk binary. On-disk file is clean (AIDE verified), but the kernel's page cache holds a modified copy. This is the Copy Fail primitive: a page-cache-only write invisible to disk forensics.",
+    },
+    showPeriodicTable: true,
+  },
+  {
+    phase: "STEP 5",
+    title: "Audit Trail & Script Recovery",
+    icon: "📡",
+    description: "Page cache confirms tampering. Check if auditd captured the syscall chain, then recover the exploit script from memory.",
+    action: "Reconstruct Attack Chain →",
+    terminal: [
+      { type: "cmd", text: "$ ausearch -sc socket -p 48287" },
+      { type: "output", text: "type=SYSCALL msg=audit(1714444904.318:8847): arch=c000003e" },
+      { type: "warn", text: "  syscall=41 exit=5 a0=26 a1=5 pid=48287 comm=\"python3\"" },
+      { type: "output", text: "  # socket(AF_ALG=0x26, SOCK_SEQPACKET=5) → fd 5" },
+      { type: "cmd", text: "$ ausearch -sc splice -p 48287" },
+      { type: "warn", text: "  syscall=275 exit=4 a0=7 a2=5 pid=48287 comm=\"python3\"" },
+      { type: "output", text: "  # splice(fd_in=7→/usr/bin/su, fd_out=5→AF_ALG) → 4 bytes" },
+      { type: "cmd", text: "$ strings /evidence/srv-prod-07.lime | grep -B1 -A2 'ALG_SET_AEAD_AUTHSIZE'" },
+      { type: "output", text: "import os, socket, zlib" },
+      { type: "output", text: "s = socket.socket(38, 5)" },
+      { type: "warn", text: "ALG_SET_AEAD_AUTHSIZE" },
+      { type: "output", text: "authenc(hmac(sha256),cbc(aes))" },
+    ],
+    finding: {
+      status: "critical",
+      text: "🔴 Full attack chain confirmed via audit trail: PID 48287 opened AF_ALG socket (syscall 41, a0=0x26) → used splice() to inject 4 bytes into /usr/bin/su page cache → root shell spawned. Recovered script fragments from memory match the public Copy Fail PoC: stdlib only (os, socket, zlib), AF_ALG + AEAD cipher + splice chain.",
+    },
+    showPeriodicTable: false,
+  },
+  {
+    phase: "VERDICT",
+    title: "CVE-2026-31431 Confirmed",
+    icon: "🎯",
+    description: null,
+    action: null,
+    terminal: null,
+    finding: null,
+    showPeriodicTable: false,
+  },
+];
+
+const TerminalLine = ({ line, visible }) => {
+  const [typed, setTyped] = useState("");
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    if (!visible) return;
+    if (line.type === "cmd") {
+      let i = 0;
+      const iv = setInterval(() => { i++; setTyped(line.text.slice(0, i)); if (i >= line.text.length) { clearInterval(iv); setDone(true); } }, 12);
+      return () => clearInterval(iv);
+    } else {
+      const t = setTimeout(() => { setTyped(line.text); setDone(true); }, 80);
+      return () => clearTimeout(t);
+    }
+  }, [visible, line]);
+  if (!visible) return null;
+  const colors = { cmd: "#22d3ee", output: "#94a3b8", system: "#a78bfa", warn: "#f87171" };
+  return (
+    <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', monospace", fontSize: "12px", lineHeight: "1.7", color: colors[line.type] || "#94a3b8", whiteSpace: "pre-wrap", wordBreak: "break-all", opacity: done ? 1 : 0.8, borderLeft: line.type === "warn" ? "2px solid #f87171" : "none", paddingLeft: line.type === "warn" ? "10px" : line.type === "output" ? "8px" : "0" }}>
+      {typed}
+      {!done && line.type === "cmd" && <span style={{ animation: "blink 0.8s infinite", color: "#22d3ee" }}>▊</span>}
+    </div>
+  );
+};
+
+const VerdictScreen = () => {
+  const [show, setShow] = useState(0);
+  useEffect(() => {
+    const timers = [
+      setTimeout(() => setShow(1), 300),
+      setTimeout(() => setShow(2), 900),
+      setTimeout(() => setShow(3), 1500),
+      setTimeout(() => setShow(4), 2200),
+      setTimeout(() => setShow(5), 3000),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  const verdictItems = [
+    { label: "CVE", value: "CVE-2026-31431 — Copy Fail", hl: false },
+    { label: "Vector", value: "algif_aead page-cache write via AF_ALG + splice()", hl: false },
+    { label: "Evidence", value: "Page cache hash mismatch, audit syscall chain, script recovery via strings", hl: false },
+    { label: "Key Tool", value: "Vo — Volatility 3 (linux.pagecache.Files / InodePages)", hl: true },
+    { label: "Lesson", value: "Disk forensics alone would have missed this entirely", hl: false },
+  ];
+
+  return (
+    <div style={{ padding: "24px 0" }}>
+      <div style={{ textAlign: "center", marginBottom: "32px", opacity: show >= 1 ? 1 : 0, transform: show >= 1 ? "scale(1)" : "scale(0.8)", transition: "all 0.6s cubic-bezier(0.16, 1, 0.3, 1)" }}>
+        <div style={{ fontSize: "48px", marginBottom: "8px" }}>🎯</div>
+        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "22px", fontWeight: "800", color: "#f87171", letterSpacing: "3px", textTransform: "uppercase" }}>CONFIRMED</div>
+        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "15px", color: "#94a3b8", marginTop: "4px" }}>CVE-2026-31431 • Copy Fail</div>
+      </div>
+      {verdictItems.map((item, i) => (
+        <div key={i} style={{ opacity: show >= 2 ? 1 : 0, transform: show >= 2 ? "translateX(0)" : "translateX(-20px)", transition: `all 0.5s ease ${i * 0.12}s`, display: "flex", gap: "12px", marginBottom: "12px", padding: "12px 16px", background: item.hl ? "rgba(59, 130, 246, 0.08)" : "rgba(248, 113, 113, 0.06)", borderLeft: `3px solid ${item.hl ? "#3b82f6" : "#f87171"}`, borderRadius: "0 6px 6px 0" }}>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: item.hl ? "#3b82f6" : "#f87171", fontWeight: "700", letterSpacing: "1px", minWidth: "72px", textTransform: "uppercase", paddingTop: "2px" }}>{item.label}</span>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", color: "#e2e8f0", lineHeight: "1.5" }}>{item.value}</span>
+        </div>
+      ))}
+      <div style={{ opacity: show >= 3 ? 1 : 0, transition: "opacity 0.6s ease", marginTop: "28px", padding: "16px", background: "rgba(34, 211, 238, 0.06)", border: "1px solid rgba(34, 211, 238, 0.2)", borderRadius: "8px", fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", color: "#22d3ee", lineHeight: "1.8", textAlign: "center" }}>
+        The smoking gun was in RAM, not on disk.<br />
+        Memory acquisition → page cache diff → attack chain reconstruction.
+      </div>
+      <div style={{ opacity: show >= 4 ? 1 : 0, transition: "all 0.6s ease", marginTop: "16px", textAlign: "center" }}>
+        <a href={PERIODIC_TABLE_URL} target="_blank" rel="noopener noreferrer"
+          style={{ display: "inline-flex", alignItems: "center", gap: "10px", padding: "10px 20px", background: "linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.05) 100%)", border: "1px solid rgba(59, 130, 246, 0.3)", borderRadius: "8px", textDecoration: "none", transition: "all 0.3s ease" }}
+          onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(59, 130, 246, 0.5)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(59, 130, 246, 0.3)"; }}
+        >
+          <div style={{ width: "28px", height: "30px", background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)", borderRadius: "3px", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(255,255,255,0.1)" }}>
+            <span style={{ fontSize: "12px", fontWeight: "800", color: "#fff" }}>Vo</span>
+          </div>
+          <div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", fontWeight: "700", color: "#3b82f6" }}>Periodic Table of DFIR</div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", color: "#64748b" }}>118 tools • 8 categories • Explore →</div>
+          </div>
+        </a>
+      </div>
+      <div style={{ opacity: show >= 5 ? 1 : 0, transition: "opacity 0.6s ease", marginTop: "16px", textAlign: "center", fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "#475569", letterSpacing: "1px" }}>
+        #M4r1n0 B3k105 • DFIR Investigation Walkthrough
+      </div>
+    </div>
+  );
+};
+
+function CopyFailDFIR() {
+  const [step, setStep] = useState(0);
+  const [visibleLines, setVisibleLines] = useState(0);
+  const [showFinding, setShowFinding] = useState(false);
+  const [showTable, setShowTable] = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
+  const termRef = useRef(null);
+  const current = STEPS[step];
+
+  useEffect(() => {
+    setVisibleLines(0); setShowFinding(false); setShowTable(false);
+    if (!current.terminal) return;
+    let i = 0;
+    const iv = setInterval(() => { i++; setVisibleLines(i); if (i >= current.terminal.length) { clearInterval(iv); setTimeout(() => { setShowFinding(true); if (current.showPeriodicTable) setTimeout(() => setShowTable(true), 500); }, 600); } }, 400);
+    return () => clearInterval(iv);
+  }, [step]);
+
+  useEffect(() => { if (termRef.current) termRef.current.scrollTop = termRef.current.scrollHeight; }, [visibleLines]);
+
+  const goNext = () => { if (step >= STEPS.length - 1) return; setTransitioning(true); setTimeout(() => { setStep(s => s + 1); setTransitioning(false); }, 300); };
+  const goBack = () => { if (step <= 0) return; setTransitioning(true); setTimeout(() => { setStep(s => s - 1); setTransitioning(false); }, 300); };
+  const isVerdict = current.phase === "VERDICT";
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#0a0e1a", color: "#e2e8f0", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", fontFamily: "'JetBrains Mono', 'Fira Code', monospace" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+        @keyframes pulse { 0%,100%{opacity:0.6} 50%{opacity:1} }
+        @keyframes fadeSlideIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+      `}</style>
+      <div style={{ width: "100%", maxWidth: "680px", background: "#0f1629", borderRadius: "12px", border: "1px solid #1e293b", overflow: "hidden", boxShadow: "0 0 80px rgba(34, 211, 238, 0.05)", position: "relative" }}>
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "repeating-linear-gradient(transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px)", pointerEvents: "none", zIndex: 10 }} />
+
+        {/* Title bar */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 20px", borderBottom: "1px solid #1e293b", background: "#0c1220" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div style={{ display: "flex", gap: "6px" }}>
+              <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#f87171" }} />
+              <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#fbbf24" }} />
+              <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#34d399" }} />
+            </div>
+            <span style={{ fontSize: "11px", color: "#475569", letterSpacing: "2px", textTransform: "uppercase" }}>DFIR Console</span>
+          </div>
+          <span style={{ fontSize: "10px", color: step < STEPS.length - 1 ? "#f87171" : "#34d399", letterSpacing: "1px", animation: step < STEPS.length - 1 ? "pulse 2s infinite" : "none", fontWeight: 700 }}>
+            {step < STEPS.length - 1 ? "● ACTIVE INCIDENT" : "● CASE CLOSED"}
+          </span>
+        </div>
+
+        {/* Progress */}
+        <div style={{ height: "2px", background: "#1e293b" }}>
+          <div style={{ height: "100%", width: `${((step + 1) / STEPS.length) * 100}%`, background: "linear-gradient(90deg, #22d3ee, #f87171)", transition: "width 0.5s ease" }} />
+        </div>
+
+        {/* Phase */}
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "16px 20px 8px" }}>
+          <span style={{ fontSize: "10px", fontWeight: "700", color: "#0f1629", background: "#22d3ee", padding: "3px 10px", borderRadius: "3px", letterSpacing: "2px" }}>{current.phase}</span>
+          <span style={{ fontSize: "14px" }}>{current.icon}</span>
+          <span style={{ fontSize: "14px", fontWeight: "700", color: "#e2e8f0" }}>{current.title}</span>
+        </div>
+
+        {/* Content */}
+        <div style={{ padding: "8px 20px 20px", opacity: transitioning ? 0 : 1, transform: transitioning ? "translateY(10px)" : "translateY(0)", transition: "all 0.3s ease", minHeight: "380px" }}>
+          {isVerdict ? <VerdictScreen /> : (
+            <>
+              {current.description && <p style={{ fontSize: "12.5px", color: "#94a3b8", lineHeight: "1.7", margin: "8px 0 16px", fontFamily: "'JetBrains Mono', monospace" }}>{current.description}</p>}
+              {current.terminal && (
+                <div ref={termRef} style={{ background: "#080c18", border: "1px solid #1e293b", borderRadius: "8px", padding: "14px 16px", maxHeight: "220px", overflowY: "auto", marginBottom: "16px" }}>
+                  {current.terminal.map((line, i) => <TerminalLine key={`${step}-${i}`} line={line} visible={i < visibleLines} />)}
+                  {visibleLines < current.terminal.length && <span style={{ color: "#22d3ee", fontSize: "12px", animation: "blink 0.8s infinite" }}>▊</span>}
+                </div>
+              )}
+              {current.finding && showFinding && (
+                <div style={{ padding: "14px 16px", background: current.finding.status === "critical" ? "rgba(248, 113, 113, 0.08)" : "rgba(251, 191, 36, 0.08)", border: `1px solid ${current.finding.status === "critical" ? "rgba(248, 113, 113, 0.3)" : "rgba(251, 191, 36, 0.3)"}`, borderRadius: "8px", fontSize: "12px", color: "#e2e8f0", lineHeight: "1.7", animation: "fadeSlideIn 0.5s ease" }}>
+                  <div style={{ fontSize: "10px", fontWeight: "700", letterSpacing: "2px", color: current.finding.status === "critical" ? "#f87171" : "#fbbf24", marginBottom: "6px" }}>
+                    {current.finding.status === "critical" ? "⚡ CRITICAL FINDING" : "⚡ FINDING"}
+                  </div>
+                  {current.finding.text}
+                </div>
+              )}
+              {current.showPeriodicTable && <ToolReference visible={showTable} />}
+            </>
+          )}
+        </div>
+
+        {/* Navigation */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 20px 16px", borderTop: "1px solid #1e293b" }}>
+          <button onClick={goBack} disabled={step === 0}
+            style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: step === 0 ? "#334155" : "#94a3b8", background: "none", border: "1px solid", borderColor: step === 0 ? "#1e293b" : "#334155", padding: "8px 16px", borderRadius: "6px", cursor: step === 0 ? "default" : "pointer", letterSpacing: "1px" }}>
+            ← BACK
+          </button>
+          <span style={{ fontSize: "11px", color: "#475569" }}>{step + 1} / {STEPS.length}</span>
+          {step < STEPS.length - 1 ? (
+            <button onClick={goNext}
+              style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "#0f1629", background: showFinding || step === 0 ? "#22d3ee" : "#1e293b", border: "none", padding: "8px 20px", borderRadius: "6px", cursor: showFinding || step === 0 ? "pointer" : "default", letterSpacing: "1px", fontWeight: "700", transition: "all 0.3s", opacity: showFinding || step === 0 ? 1 : 0.4, boxShadow: showFinding || step === 0 ? "0 0 20px rgba(34, 211, 238, 0.2)" : "none" }}>
+              {current.action || "NEXT →"}
+            </button>
+          ) : (
+            <button onClick={() => { setTransitioning(true); setTimeout(() => { setStep(0); setTransitioning(false); }, 300); }}
+              style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "#0f1629", background: "#34d399", border: "none", padding: "8px 20px", borderRadius: "6px", cursor: "pointer", letterSpacing: "1px", fontWeight: "700" }}>
+              ↺ RESTART
+            </button>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 20px", borderTop: "1px solid #1e293b", background: "#0a0e1a" }}>
+          <a href="https://linkedin.com/in/marbekios" target="_blank" rel="noopener noreferrer"
+            style={{ display: "flex", alignItems: "center", gap: "6px", textDecoration: "none", fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#475569", transition: "color 0.2s" }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "#94a3b8"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "#475569"; }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+            LinkedIn
+          </a>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#334155", letterSpacing: "0.5px" }}>
+            © 2026 Marino-MB_Labs — All packets logged.
+          </span>
+          <img src={MB_LABS_LOGO} alt="MB Labs" style={{ width: "44px", height: "44px", opacity: 0.6, objectFit: "contain" }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(CopyFailDFIR));
+    </script>
+</body>
+</html>
